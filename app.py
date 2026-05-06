@@ -15,7 +15,6 @@ import google.generativeai as genai
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
-# Folder များ ဆောက်ခြင်း
 DOWNLOADS_DIR = "downloads"
 for folder in [DOWNLOADS_DIR, "static"]:
     if not os.path.exists(folder): os.makedirs(folder)
@@ -23,7 +22,6 @@ for folder in [DOWNLOADS_DIR, "static"]:
 app.mount("/static", StaticFiles(directory="static"), name="static")
 security = HTTPBasic()
 
-# Login အချက်အလက်
 USER_NAME = "admin"
 USER_PASSWORD = "password123"
 
@@ -40,16 +38,14 @@ async def index(request: Request, username: str = Depends(get_current_user)):
 @app.post("/dub-video")
 async def dub_video(file: UploadFile = File(...), api_key: str = Form(...)):
     unique_id = secrets.token_hex(4)
-    input_video = os.path.join(DOWNLOADS_DIR, f"input_{unique_id}.mp4")
-    temp_audio = os.path.join(DOWNLOADS_DIR, f"voice_{unique_id}.mp3")
-    output_video = os.path.join(DOWNLOADS_DIR, f"dubbed_{unique_id}.mp4")
+    input_video = os.path.join(DOWNLOADS_DIR, f"in_{unique_id}.mp4")
+    temp_audio = os.path.join(DOWNLOADS_DIR, f"v_{unique_id}.mp3")
+    output_video = os.path.join(DOWNLOADS_DIR, f"out_{unique_id}.mp4")
 
     try:
-        # ၁။ ဗီဒီယိုကို သိမ်းခြင်း
         with open(input_video, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # ၂။ Gemini AI နဲ့ ဘာသာပြန်ခြင်း
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel("gemini-1.5-flash")
         video_part = genai.upload_file(path=input_video)
@@ -58,24 +54,24 @@ async def dub_video(file: UploadFile = File(...), api_key: str = Form(...)):
         response = model.generate_content([prompt, video_part])
         myanmar_text = response.text
 
-        # ၃။ မြန်မာအသံ (TTS) ဖန်တီးခြင်း
+        # မြန်မာအသံဖန်တီးခြင်း
         communicate = edge_tts.Communicate(myanmar_text, "my-MM-ThihaNeural")
         await communicate.save(temp_audio)
 
-        # ၄။ ဗီဒီယိုထဲသို့ မြန်မာသံ ထည့်သွင်းခြင်း (MP4 ထုတ်ခြင်း)
+        # Video နဲ့ Audio ပေါင်းခြင်း
         video_clip = VideoFileClip(input_video)
         myanmar_audio = AudioFileClip(temp_audio)
         
-        # ဗီဒီယိုအရှည်နဲ့ အသံအရှည်ကို ညှိခြင်း
+        # RAM ချွေတာရန်အတွက် resize လုပ်ပြီးမှ ပေါင်းပါမယ်
         final_clip = video_clip.set_audio(myanmar_audio)
-        final_clip.write_videofile(output_video, codec="libx264", audio_codec="aac")
+        final_clip.write_videofile(output_video, codec="libx264", audio_codec="aac", temp_audiofile='temp-audio.m4a', remove_temp=True)
 
         video_clip.close()
         myanmar_audio.close()
 
         return {
             "status": "success",
-            "message": "Dubbing အောင်မြင်ပါသည်။ MP3 နှင့် MP4 နှစ်မျိုးလုံး ဒေါင်းလုဒ်ဆွဲနိုင်ပါပြီ။",
+            "message": "Dubbing အောင်မြင်ပါသည်။",
             "mp3_url": f"/download/{os.path.basename(temp_audio)}",
             "mp4_url": f"/download/{os.path.basename(output_video)}"
         }
