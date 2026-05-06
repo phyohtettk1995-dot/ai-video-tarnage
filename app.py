@@ -12,7 +12,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 security = HTTPBasic()
 
-# --- ဒီနေရာမှာ Username နဲ့ Password ကို ပြင်နိုင်ပါတယ် ---
 USER_NAME = "admin"
 USER_PASSWORD = "password123" 
 
