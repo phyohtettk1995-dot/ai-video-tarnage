@@ -32,7 +32,8 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security)):
 
 @app.get("/")
 async def index(request: Request, username: str = Depends(get_current_user)):
-    return templates.TemplateResponse("index.html", {"request": request})
+    # FastAPI Version အသစ်အတွက် Template ခေါ်ယူနည်း ပြင်ဆင်ချက်
+    return templates.TemplateResponse(request=request, name="index.html")
 
 @app.post("/dub-video")
 async def dub_video(
