@@ -12,7 +12,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 security = HTTPBasic()
 
-# --- ဒီနေရာမှာ Username နဲ့ Password ကို ပြင်ပါ ---
+# --- ဒီနေရာမှာ Username နဲ့ Password ကို ပြင်နိုင်ပါတယ် ---
 USER_NAME = "admin"
 USER_PASSWORD = "password123" 
 
@@ -32,10 +32,14 @@ async def index(request: Request, username: str = Depends(get_current_user)):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.post("/dub-video")
-async def dub_video(file: UploadFile = File(...), api_key: str = Form(...), target_lang: str = Form(...)):
+async def dub_video(
+    file: UploadFile = File(...), 
+    api_key: str = Form(...), 
+    target_lang: str = Form(...)
+):
     try:
         genai.configure(api_key=api_key)
-        # ဤနေရာတွင် သင်၏ Dubbing Logic များကို ထည့်သွင်းပါ
+        # ဤနေရာတွင် သင်၏ Dubbing Logic များကို ထည့်သွင်းနိုင်ပါသည်
         return {"status": "success", "message": "ဗီဒီယိုကို စတင်လုပ်ဆောင်နေပါပြီ။"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
