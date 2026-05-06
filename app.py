@@ -2,8 +2,11 @@
 import os
 import secrets
 import shutil
-import tempfile
-from fastapi import FastAPI, Request, File, UploadFile, Form, Depends, HTTPException, status
+import asyncio
+import edge_tts
+from moviepy.editor import VideoFileClip, AudioFileClip
+from fastapi import FastAPI, Request, File, UploadFile, Form, Depends, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -11,54 +14,78 @@ import google.generativeai as genai
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Folder များ ဆောက်ခြင်း
+DOWNLOADS_DIR = "downloads"
+for folder in [DOWNLOADS_DIR, "static"]:
+    if not os.path.exists(folder): os.makedirs(folder)
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 security = HTTPBasic()
 
-# --- ဒီနေရာမှာ Username နဲ့ Password ကို ပြင်နိုင်ပါတယ် ---
+# Login အချက်အလက်
 USER_NAME = "admin"
-USER_PASSWORD = "password123" 
+USER_PASSWORD = "password123"
 
 def get_current_user(credentials: HTTPBasicCredentials = Depends(security)):
-    is_user_ok = secrets.compare_digest(credentials.username, USER_NAME)
-    is_pass_ok = secrets.compare_digest(credentials.password, USER_PASSWORD)
-    if not (is_user_ok and is_pass_ok):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Basic"},
-        )
+    if not (secrets.compare_digest(credentials.username, USER_NAME) and 
+            secrets.compare_digest(credentials.password, USER_PASSWORD)):
+        raise HTTPException(status_code=401, detail="Unauthorized")
     return credentials.username
 
 @app.get("/")
 async def index(request: Request, username: str = Depends(get_current_user)):
-    # FastAPI Version အသစ်အတွက် Template ခေါ်ယူနည်း ပြင်ဆင်ချက်
     return templates.TemplateResponse(request=request, name="index.html")
 
 @app.post("/dub-video")
-async def dub_video(
-    file: UploadFile = File(...), 
-    api_key: str = Form(...), 
-    target_lang: str = Form(...)
-):
-    temp_file_path = ""
+async def dub_video(file: UploadFile = File(...), api_key: str = Form(...)):
+    unique_id = secrets.token_hex(4)
+    input_video = os.path.join(DOWNLOADS_DIR, f"input_{unique_id}.mp4")
+    temp_audio = os.path.join(DOWNLOADS_DIR, f"voice_{unique_id}.mp3")
+    output_video = os.path.join(DOWNLOADS_DIR, f"dubbed_{unique_id}.mp4")
+
     try:
+        # ၁။ ဗီဒီယိုကို သိမ်းခြင်း
+        with open(input_video, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        # ၂။ Gemini AI နဲ့ ဘာသာပြန်ခြင်း
         genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        video_part = genai.upload_file(path=input_video)
+        
+        prompt = "Translate all speech in this video to natural Myanmar (Burmese). Return only the translated text."
+        response = model.generate_content([prompt, video_part])
+        myanmar_text = response.text
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_file:
-            shutil.copyfileobj(file.file, temp_file)
-            temp_file_path = temp_file.name
+        # ၃။ မြန်မာအသံ (TTS) ဖန်တီးခြင်း
+        communicate = edge_tts.Communicate(myanmar_text, "my-MM-ThihaNeural")
+        await communicate.save(temp_audio)
 
-        video_file = genai.upload_file(path=temp_file_path)
+        # ၄။ ဗီဒီယိုထဲသို့ မြန်မာသံ ထည့်သွင်းခြင်း (MP4 ထုတ်ခြင်း)
+        video_clip = VideoFileClip(input_video)
+        myanmar_audio = AudioFileClip(temp_audio)
+        
+        # ဗီဒီယိုအရှည်နဲ့ အသံအရှည်ကို ညှိခြင်း
+        final_clip = video_clip.set_audio(myanmar_audio)
+        final_clip.write_videofile(output_video, codec="libx264", audio_codec="aac")
+
+        video_clip.close()
+        myanmar_audio.close()
 
         return {
-            "status": "success", 
-            "message": "အောင်မြင်ပါသည်။ ဗီဒီယိုကို Gemini သို့ တင်ပြီးပါပြီ။"
+            "status": "success",
+            "message": "Dubbing အောင်မြင်ပါသည်။ MP3 နှင့် MP4 နှစ်မျိုးလုံး ဒေါင်းလုဒ်ဆွဲနိုင်ပါပြီ။",
+            "mp3_url": f"/download/{os.path.basename(temp_audio)}",
+            "mp4_url": f"/download/{os.path.basename(output_video)}"
         }
     
     except Exception as e:
         return {"status": "error", "message": str(e)}
-    
-    finally:
-        if temp_file_path and os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
+
+@app.get("/download/{filename}")
+async def download_file(filename: str):
+    file_path = os.path.join(DOWNLOADS_DIR, filename)
+    if os.path.exists(file_path):
+        return FileResponse(path=file_path)
+    raise HTTPException(status_code=404, detail="File not found")
