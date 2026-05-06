@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import secrets
 import shutil
@@ -41,26 +42,22 @@ async def dub_video(
 ):
     temp_file_path = ""
     try:
-        # ၁။ API Key ကို ချိတ်ဆက်ခြင်း
         genai.configure(api_key=api_key)
 
-        # ၂။ ဗီဒီယိုကို Server ပေါ်တွင် ယာယီ သိမ်းဆည်းခြင်း (Error ကို ဖြေရှင်းရန်)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_file:
             shutil.copyfileobj(file.file, temp_file)
             temp_file_path = temp_file.name
 
-        # ၃။ သိမ်းဆည်းထားသော ဗီဒီယိုကို Gemini API သို့ Upload တင်ခြင်း
         video_file = genai.upload_file(path=temp_file_path)
 
         return {
             "status": "success", 
-            "message": f"အောင်မြင်ပါသည်။ ဗီဒီယိုကို Gemini သို့ တင်ပြီးပါပြီ။"
+            "message": "အောင်မြင်ပါသည်။ ဗီဒီယိုကို Gemini သို့ တင်ပြီးပါပြီ။"
         }
     
     except Exception as e:
         return {"status": "error", "message": str(e)}
     
     finally:
-        # လုပ်ငန်းစဉ်ပြီးဆုံးပါက Server ပေါ်ရှိ ယာယီဖိုင်ကို ပြန်ဖျက်ပါ (Storage မပြည့်စေရန်)
         if temp_file_path and os.path.exists(temp_file_path):
             os.remove(temp_file_path)
