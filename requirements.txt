@@ -4,6 +4,6 @@ uvicorn
 jinja2
 python-multipart
 edge-tts
-moviepy==1.0.3
+moviepy
 proglog
-decorator==4.4.2
+decorator
