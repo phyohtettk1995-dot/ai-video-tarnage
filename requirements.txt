@@ -3,6 +3,6 @@ fastapi
 uvicorn
 jinja2
 python-multipart
-edge-tts
+edge-tts==6.1.12
 moviepy<2.0.0
 imageio-ffmpeg
