@@ -47,25 +47,18 @@ async def dub_video(file: UploadFile = File(...), api_key: str = Form(...)):
             shutil.copyfileobj(file.file, buffer)
 
         genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(model_name="models/gemini-1.5-flash")
         
-        # ဒီနေရာမှာ နာမည်ကို models/ မပါဘဲ အတိအကျ ပြောင်းထားပါတယ်
-model = genai.GenerativeModel(model_name="models/gemini-1.5-flash")        
         video_part = genai.upload_file(path=input_video)
         
-        # Video အလုပ်လုပ်နေပြီလား စစ်ဆေးရန် ခေတ္တစောင့်ခြင်း
-        while video_part.state.name == "PROCESSING":
-            await asyncio.sleep(2)
-            video_part = genai.get_file(video_part.name)
-
+        # Space ပြဿနာမတက်အောင် ရိုးရိုးရှင်းရှင်းပဲ ပြန်ညှိထားပါတယ်
         prompt = "Translate all speech in this video to natural Myanmar (Burmese). Return only the translated text."
         response = model.generate_content([prompt, video_part])
         myanmar_text = response.text
 
-        # မြန်မာအသံဖန်တီးခြင်း
         communicate = Communicate(text=myanmar_text, voice="my-MM-ThihaNeural")
         await communicate.save(temp_audio)
 
-        # Video နဲ့ Audio ပေါင်းခြင်း
         video_clip = VideoFileClip(input_video)
         myanmar_audio = AudioFileClip(temp_audio)
         
