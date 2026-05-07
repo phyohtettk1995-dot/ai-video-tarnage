@@ -3,6 +3,7 @@ import os
 import secrets
 import shutil
 import asyncio
+import time
 from edge_tts import Communicate
 from moviepy.editor import VideoFileClip, AudioFileClip
 from fastapi import FastAPI, Request, File, UploadFile, Form, Depends, HTTPException
@@ -47,18 +48,25 @@ async def dub_video(file: UploadFile = File(...), api_key: str = Form(...)):
             shutil.copyfileobj(file.file, buffer)
 
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(model_name="models/gemini-1.5-flash")
+        # Model နာမည်ကို API Version အားလုံးနဲ့ ကိုက်အောင် ရိုးရိုးပဲ ထားထားပါတယ်
+        model = genai.GenerativeModel("gemini-1.5-flash")
         
         video_part = genai.upload_file(path=input_video)
         
-        # Space ပြဿနာမတက်အောင် ရိုးရိုးရှင်းရှင်းပဲ ပြန်ညှိထားပါတယ်
+        # ဗီဒီယိုကို AI က ဖတ်လို့ ပြီးတဲ့အထိ စောင့်ခြင်း (ဒါမှ 404/400 Error မတက်မှာပါ)
+        while video_part.state.name == "PROCESSING":
+            time.sleep(3)
+            video_part = genai.get_file(video_part.name)
+
         prompt = "Translate all speech in this video to natural Myanmar (Burmese). Return only the translated text."
         response = model.generate_content([prompt, video_part])
         myanmar_text = response.text
 
+        # မြန်မာအသံဖန်တီးခြင်း
         communicate = Communicate(text=myanmar_text, voice="my-MM-ThihaNeural")
         await communicate.save(temp_audio)
 
+        # Video နဲ့ Audio ပေါင်းခြင်း
         video_clip = VideoFileClip(input_video)
         myanmar_audio = AudioFileClip(temp_audio)
         
