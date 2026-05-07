@@ -3,7 +3,7 @@ import os
 import secrets
 import shutil
 import asyncio
-import edge_tts
+from edge_tts import Communicate
 from moviepy.editor import VideoFileClip, AudioFileClip
 from fastapi import FastAPI, Request, File, UploadFile, Form, Depends, HTTPException
 from fastapi.responses import FileResponse
@@ -55,16 +55,15 @@ async def dub_video(file: UploadFile = File(...), api_key: str = Form(...)):
         myanmar_text = response.text
 
         # မြန်မာအသံဖန်တီးခြင်း
-        communicate = edge_tts.Communicate(myanmar_text, "my-MM-ThihaNeural")
+        communicate = Communicate(text=myanmar_text, voice="my-MM-ThihaNeural")
         await communicate.save(temp_audio)
 
         # Video နဲ့ Audio ပေါင်းခြင်း
         video_clip = VideoFileClip(input_video)
         myanmar_audio = AudioFileClip(temp_audio)
         
-        # RAM ချွေတာရန်အတွက် resize လုပ်ပြီးမှ ပေါင်းပါမယ်
         final_clip = video_clip.set_audio(myanmar_audio)
-        final_clip.write_videofile(output_video, codec="libx264", audio_codec="aac", temp_audiofile='temp-audio.m4a', remove_temp=True)
+        final_clip.write_videofile(output_video, codec="libx264", audio_codec="aac", temp_audiofile=os.path.join(DOWNLOADS_DIR, f"temp_{unique_id}.m4a"), remove_temp=True)
 
         video_clip.close()
         myanmar_audio.close()
