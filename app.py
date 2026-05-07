@@ -49,8 +49,7 @@ async def dub_video(file: UploadFile = File(...), api_key: str = Form(...)):
         genai.configure(api_key=api_key)
         
         # ဒီနေရာမှာ နာမည်ကို models/ မပါဘဲ အတိအကျ ပြောင်းထားပါတယ်
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        
+model = genai.GenerativeModel(model_name="models/gemini-1.5-flash")        
         video_part = genai.upload_file(path=input_video)
         
         # Video အလုပ်လုပ်နေပြီလား စစ်ဆေးရန် ခေတ္တစောင့်ခြင်း
