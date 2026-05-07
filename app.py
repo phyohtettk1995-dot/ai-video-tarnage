@@ -47,6 +47,7 @@ async def dub_video(file: UploadFile = File(...), api_key: str = Form(...)):
             shutil.copyfileobj(file.file, buffer)
 
         genai.configure(api_key=api_key)
+        # မော်ဒယ်ကို flash နဲ့ပဲ သေချာအောင် ပြန်သုံးထားပါတယ်
         model = genai.GenerativeModel("gemini-1.5-flash")
         video_part = genai.upload_file(path=input_video)
         
@@ -63,6 +64,7 @@ async def dub_video(file: UploadFile = File(...), api_key: str = Form(...)):
         myanmar_audio = AudioFileClip(temp_audio)
         
         final_clip = video_clip.set_audio(myanmar_audio)
+        # RAM ချွေတာရန် လမ်းကြောင်းသေချာသတ်မှတ်ခြင်း
         final_clip.write_videofile(output_video, codec="libx264", audio_codec="aac", temp_audiofile=os.path.join(DOWNLOADS_DIR, f"temp_{unique_id}.m4a"), remove_temp=True)
 
         video_clip.close()
