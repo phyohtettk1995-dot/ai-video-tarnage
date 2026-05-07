@@ -91,18 +91,18 @@
                 const result = await response.json();
 
                 if (result.status === 'success') {
-                    // အမှားကင်းသွားအောင် + သင်္ကေတဖြင့် ပြင်ဆင်ရေးသားထားပါသည်
-                    statusDiv.innerHTML = 
-                        '<p class="text-green-400 font-bold mb-6">' + result.message + '</p>' +
-                        '<div class="flex gap-4 justify-center">' +
-                            '<a href="' + result.mp3_url + '" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold transition">DOWNLOAD MP3</a>' +
-                            '<a href="' + result.mp4_url + '" target="_blank" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-bold transition">DOWNLOAD MP4</a>' +
-                        '</div>';
+                    statusDiv.innerHTML = `
+                        <p class="text-green-400 font-bold mb-6">${result.message}</p>
+                        <div class="flex gap-4 justify-center">
+                            <a href="${result.mp3_url}" download class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold transition">DOWNLOAD MP3</a>
+                            <a href="${result.mp4_url}" download class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-bold transition">DOWNLOAD MP4</a>
+                        </div>
+                    `;
                 } else {
-                    statusDiv.innerHTML = '<p class="text-red-400 font-bold">Error: ' + result.message + '</p>';
+                    statusDiv.innerHTML = `<p class="text-red-400 font-bold">Error: ${result.message}</p>`;
                 }
             } catch (error) {
-                statusDiv.innerHTML = '<p class="text-red-400 font-bold">System Error: ' + error.message + '</p>';
+                statusDiv.innerHTML = `<p class="text-red-400 font-bold">System Error: ${error.message}</p>`;
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = 'PROCESS VIDEO';
